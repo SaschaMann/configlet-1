@@ -10,6 +10,7 @@ type
 
   ProbSpecsTestCase* = object
     json*: JsonNode
+    parents*: seq[JsonNode]
 
   ProbSpecsExercise* = object
     slug*: string
@@ -56,14 +57,18 @@ proc exercisesWithCanonicalData(repo: ProbSpecsRepo): seq[ProbSpecsRepoExercise]
 func slug(repoExercise: ProbSpecsRepoExercise): string =
   extractFilename(repoExercise.dir)
 
-func initProbSpecsTestCase(node: JsonNode): ProbSpecsTestCase =
-  ProbSpecsTestCase(json: node)
+func initProbSpecsTestCase(node: JsonNode, parents: seq[JsonNode]): ProbSpecsTestCase =
+  ProbSpecsTestCase(json: node, parents: parents)
 
 proc uuid*(testCase: ProbSpecsTestCase): string =
   testCase.json["uuid"].getStr()
 
 proc description*(testCase: ProbSpecsTestCase): string =
-  testCase.json["description"].getStr()
+  for parent in testCase.parents:
+    if parent.contains("description"):
+      result.add(parent["description"].getStr() & " → ")
+
+  result.add(testCase.json["description"].getStr())
 
 func isReimplementation*(testCase: ProbSpecsTestCase): bool =
   testCase.json.hasKey("reimplements")
@@ -71,12 +76,14 @@ func isReimplementation*(testCase: ProbSpecsTestCase): bool =
 proc reimplements*(testCase: ProbSpecsTestCase): string =
   testCase.json["reimplements"].getStr()
 
-proc initProbSpecsTestCases(node: JsonNode): seq[ProbSpecsTestCase] =
+proc initProbSpecsTestCases(node: JsonNode, parents: seq[JsonNode] = @[]): seq[ProbSpecsTestCase] =
   if node.hasKey("uuid"):
-    result.add(initProbSpecsTestCase(node))
+    result.add(initProbSpecsTestCase(node, parents))
   elif node.hasKey("cases"):
+    var newParents = parents
+    newParents.add(node)
     for childNode in node["cases"].getElems():
-      result.add(initProbSpecsTestCases(childNode))
+      result.add(initProbSpecsTestCases(childNode, newParents))
 
 proc grainsWorkaround(grainsPath: string): JsonNode =
   ## Parses the canonical data file for `grains`, replacing the too-large
