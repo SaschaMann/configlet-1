@@ -436,9 +436,6 @@ proc hasInteger*(data: JsonNode; key: string; path: Path; context = "";
   elif not isRequired:
     result = true
 
-proc dirExists*(path: Path): bool {.borrow.}
-proc fileExists(path: Path): bool {.borrow.}
-proc readFile(path: Path): string {.borrow.}
 proc parseJson(s: Stream; filename: Path; rawIntegers = false;
                rawFloats = false): JsonNode {.borrow.}
 
